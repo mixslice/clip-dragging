@@ -1,6 +1,8 @@
 export const COLLISION_NONE = 0;
-export const COLLISION_LEFT = 1;
-export const COLLISION_RIGHT = 2;
+export const COLLISION_RIGHT = 1;
+export const COLLISION_LEFT = 2;
+export const COLLISION_BOTTOM = 3;
+export const COLLISION_TOP = 4;
 
 export class RectParticle {
   constructor(posX, posY, wRadius = 60) {
@@ -44,6 +46,19 @@ export class RectParticle {
         return COLLISION_RIGHT;
       }
       return COLLISION_LEFT;
+    }
+    return COLLISION_NONE;
+  }
+
+  verticalCollisionTest(shape) {
+    if (
+      (shape.y < this.y + this.hRadius)
+      && (shape.y > this.y - this.hRadius)
+    ) {
+      if (shape.y > this.y) {
+        return COLLISION_BOTTOM;
+      }
+      return COLLISION_TOP;
     }
     return COLLISION_NONE;
   }

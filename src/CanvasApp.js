@@ -11,6 +11,7 @@ export default class CanvasApp {
     this.numShapes = 5;
     this.easeAmount = 1;
     this.shapes = [];
+    this.laneShapes = [];
     this.dragIndex = -1;
     this.dragging = false;
     this.draggingShape = null;
@@ -21,6 +22,10 @@ export default class CanvasApp {
     this.targetX = null;
     this.targetY = null;
     this.isStoryline = false;
+  }
+
+  getLane(posY) {
+    return -Math.floor((posY - this.canvas.height * 0.5 + 20) / 40);
   }
 
   draw() {
@@ -60,19 +65,37 @@ export default class CanvasApp {
     const bRect = this.canvas.getBoundingClientRect();
     const mouseX = (event.clientX - bRect.left) * (this.canvas.width / bRect.width);
     const mouseY = (event.clientY - bRect.top) * (this.canvas.height / bRect.height);
+    const lane = this.getLane(mouseY);
 
-    this.shapes.every((shape, i) => {
-      if (shape.hitTest(mouseX, mouseY)) {
-        this.dragging = true;
-        this.isStoryline = true;
-        // the following variable will be reset if this loop repeats with another successful hit:
-        this.shadowShape = shape;
-        this.shadowShape.isShadow = true;
-        this.dragIndex = i;
-        return false;
-      }
-      return true;
-    });
+    if (lane === 0) {
+      this.shapes.every((shape, i) => {
+        if (shape.hitTest(mouseX, mouseY)) {
+          this.dragging = true;
+          this.isStoryline = true;
+          // the following variable will be reset if this loop repeats with another successful hit:
+          this.shadowShape = shape;
+          this.shadowShape.isShadow = true;
+          this.dragIndex = i;
+          return false;
+        }
+        return true;
+      });
+    } else {
+      this.laneShapes.every((shape) => {
+        if (shape.hitTest(mouseX, mouseY)) {
+          this.dragging = true;
+          this.isStoryline = false;
+          // the following variable will be reset if this loop repeats with another successful hit:
+          this.shadowShape = shape;
+          this.shadowShape.isShadow = true;
+          this.dragIndex = -1;
+          return false;
+        }
+        return true;
+      });
+    }
+
+
 
     if (this.dragging) {
       window.addEventListener('mousemove', this.mouseMoveListener.bind(this), false);
@@ -138,7 +161,6 @@ export default class CanvasApp {
         const lastShape = this.shapes[this.shapes.length - 1];
         this.insertShapeToStoryline(lastShape.x + lastShape.radius, this.shapes.length);
       }
-
     } else if (this.isStoryline) {
       this.shapes.every((shape, idx) => {
         // skip shadow shape
@@ -155,6 +177,11 @@ export default class CanvasApp {
         }
         return true;
       });
+    } else {
+      const sign = Math.sign(this.getLane(this.draggingShape.y));
+      this.shadowShape.y = this.canvas.height * 0.5
+        - sign * this.draggingShape.hRadius * 2;
+      this.shadowShape.x = this.draggingShape.x;
     }
 
 
@@ -196,6 +223,9 @@ export default class CanvasApp {
   insertShapeToStoryline(posX, toIdx) {
     if (this.dragIndex < 0) {
       this.shadowShape.x = posX + this.shadowShape.radius;
+      this.shadowShape.y = this.canvas.height * 0.5;
+      const idx = this.laneShapes.indexOf(this.shadowShape);
+      this.laneShapes.splice(idx, 1);
       this.shapes.splice(toIdx, 0, this.shadowShape);
       this.shapes.slice(toIdx + 1, this.shapes.length).map((shape) => {
         shape.x += this.shadowShape.radius * 2;
@@ -208,6 +238,7 @@ export default class CanvasApp {
   removeShapeFromStoryline() {
     if (this.dragIndex > -1) {
       this.shadowShape = this.shapes.splice(this.dragIndex, 1)[0];
+      this.laneShapes.push(this.shadowShape);
       this.shapes.slice(this.dragIndex, this.shapes.length).map((shape) => {
         shape.x -= this.shadowShape.radius * 2;
         return shape;
@@ -229,11 +260,12 @@ export default class CanvasApp {
   mouseMoveListener(event) {
     let posX;
     let posY;
-    const shapeRad = this.draggingShape.radius;
-    const minX = shapeRad;
-    const maxX = this.canvas.width - shapeRad;
-    const minY = shapeRad;
-    const maxY = this.canvas.height - shapeRad;
+    const hRadius = this.draggingShape.hRadius;
+    const wRadius = this.draggingShape.wRadius;
+    const minX = wRadius;
+    const maxX = this.canvas.width - wRadius;
+    const minY = hRadius;
+    const maxY = this.canvas.height - hRadius;
 
     // getting mouse position correctly
     const bRect = this.canvas.getBoundingClientRect();
@@ -252,7 +284,7 @@ export default class CanvasApp {
   }
 
   drawShapes() {
-    this.shapes.forEach((shape) => {
+    [...this.shapes, ...this.laneShapes].forEach((shape) => {
       shape.drawToContext(this.context, this.dragging);
     });
     if (this.dragging && this.draggingShape) {
