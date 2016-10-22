@@ -14,7 +14,11 @@ module.exports = {
   },
   plugins: [
     new webpack.HotModuleReplacementPlugin(),
-    new webpack.NoErrorsPlugin()
+    new webpack.NoErrorsPlugin(),
+    new webpack.DefinePlugin({
+      __VERSION__: JSON.stringify(process.env.npm_package_version),
+      __DEV__: true
+    })
   ],
   module: {
     loaders: [

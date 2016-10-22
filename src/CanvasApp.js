@@ -1,4 +1,8 @@
-import RectParticle from './RectParticle';
+import {
+  RectParticle,
+  COLLISION_LEFT,
+  COLLISION_RIGHT,
+} from './RectParticle';
 
 export default class CanvasApp {
   constructor(canvas) {
@@ -7,14 +11,16 @@ export default class CanvasApp {
     this.numShapes = 5;
     this.easeAmount = 1;
     this.shapes = [];
-    this.dragIndex = null;
+    this.dragIndex = -1;
     this.dragging = false;
     this.draggingShape = null;
+    this.shadowShape = null;
     this.dragHoldX = null;
     this.dragHoldY = null;
     this.timer = null;
     this.targetX = null;
     this.targetY = null;
+    this.isStoryline = false;
   }
 
   draw() {
@@ -25,10 +31,11 @@ export default class CanvasApp {
   }
 
   makeShapes() {
-    this.shapes = [...Array(this.numShapes || 0)].map((obj, idx) => {
-      const tempRad = Math.floor(Math.random() * 5);
-      const tempX = idx * 120 + 60;
+    let tempX = 0;
+    this.shapes = [...Array(this.numShapes || 0)].map(() => {
       const tempY = this.canvas.height * 0.5;
+      const tempRad = 10 + Math.floor(Math.random() * 70);
+      tempX += tempRad;
 
       // we set a randomized color, including a random alpha (transparency) value.
       // The color is set using the rgba() method.
@@ -42,8 +49,8 @@ export default class CanvasApp {
       const tempShape = new RectParticle(tempX, tempY);
 
       tempShape.color = tempColor;
-      tempShape.defaultColor = tempColor;
       tempShape.radius = tempRad;
+      tempX += tempRad;
       return tempShape;
     });
   }
@@ -57,7 +64,10 @@ export default class CanvasApp {
     this.shapes.every((shape, i) => {
       if (shape.hitTest(mouseX, mouseY)) {
         this.dragging = true;
+        this.isStoryline = true;
         // the following variable will be reset if this loop repeats with another successful hit:
+        this.shadowShape = shape;
+        this.shadowShape.isShadow = true;
         this.dragIndex = i;
         return false;
       }
@@ -68,8 +78,11 @@ export default class CanvasApp {
       window.addEventListener('mousemove', this.mouseMoveListener.bind(this), false);
 
       // place currently dragged shape on top
-      this.draggingShape = this.shapes.splice(this.dragIndex, 1)[0];
-      this.shapes.push(this.draggingShape);
+      // this.shadowShape = this.shapes.splice(this.dragIndex, 1)[0];
+      // this.shapes.push(this.draggingShape);
+      // insert shadowShape
+      this.draggingShape = new RectParticle(this.shadowShape.x, this.shadowShape.y);
+      this.draggingShape.copyProperties(this.shadowShape);
 
       // shapeto drag is now last one in array
       this.dragHoldX = mouseX - this.draggingShape.x;
@@ -98,13 +111,52 @@ export default class CanvasApp {
     this.draggingShape.x += this.easeAmount * (this.targetX - this.draggingShape.x);
     this.draggingShape.y += this.easeAmount * (this.targetY - this.draggingShape.y);
 
-    this.shapes.forEach((shape) => {
-      if (shape.collisionTest(this.draggingShape)) {
-        shape.color = this.draggingShape.color;
-      } else {
-        shape.color = shape.defaultColor;
+    if (!this.isStoryline && this.isStoryline !== this.draggingShape.isStoryClip) {
+      // remove clip
+      this.draggingShape.isStoryClip = false;
+      this.removeShapeFromStoryline();
+    } else if (this.isStoryline && this.isStoryline !== this.draggingShape.isStoryClip) {
+      // insert clip
+      this.draggingShape.isStoryClip = true;
+      let shouldAppendLast = true;
+      this.shapes.every((shape, idx) => {
+        const collisionType = shape.collisionTest(this.draggingShape);
+        shape.collisionType = collisionType;
+        if (collisionType) {
+          if (collisionType === COLLISION_LEFT) {
+            this.insertShapeToStoryline(shape.x - shape.radius, idx);
+          } else if (collisionType === COLLISION_RIGHT) {
+            this.insertShapeToStoryline(shape.x + shape.radius, idx + 1);
+          }
+          shouldAppendLast = false;
+          return false;
+        }
+        return true;
+      });
+
+      if (shouldAppendLast) {
+        const lastShape = this.shapes[this.shapes.length - 1];
+        this.insertShapeToStoryline(lastShape.x + lastShape.radius, this.shapes.length);
       }
-    });
+
+    } else if (this.isStoryline) {
+      this.shapes.every((shape, idx) => {
+        // skip shadow shape
+        if (this.dragIndex === idx) return true;
+        const collisionType = shape.collisionTest(this.draggingShape);
+        shape.collisionType = collisionType;
+        if (collisionType) {
+          if (collisionType === COLLISION_LEFT && this.dragIndex !== idx - 1) {
+            this.moveShapeInStoryline(shape.x - shape.radius, idx);
+          } else if (collisionType === COLLISION_RIGHT && this.dragIndex !== idx + 1) {
+            this.moveShapeInStoryline(shape.x + shape.radius, idx + 1);
+          }
+          return false;
+        }
+        return true;
+      });
+    }
+
 
     // stop the timer when the target position is reached (close enough)
     if (
@@ -121,11 +173,55 @@ export default class CanvasApp {
     this.drawScreen();
   }
 
+  moveShapeInStoryline(posX, toIdx) {
+    if (toIdx < this.dragIndex) {
+      this.shadowShape.x = posX + this.shadowShape.radius;
+      this.shadowShape = this.shapes.splice(this.dragIndex, 1)[0];
+      this.shapes.splice(toIdx, 0, this.shadowShape);
+      for (let i = toIdx + 1; i <= this.dragIndex; i += 1) {
+        this.shapes[i].x += this.shadowShape.radius * 2;
+      }
+      this.dragIndex = toIdx;
+    } else {
+      this.shadowShape.x = posX - this.shadowShape.radius;
+      this.shapes.splice(toIdx, 0, this.shadowShape);
+      this.shadowShape = this.shapes.splice(this.dragIndex, 1)[0];
+      for (let i = this.dragIndex; i < toIdx - 1; i += 1) {
+        this.shapes[i].x -= this.shadowShape.radius * 2;
+      }
+      this.dragIndex = toIdx - 1;
+    }
+  }
+
+  insertShapeToStoryline(posX, toIdx) {
+    if (this.dragIndex < 0) {
+      this.shadowShape.x = posX + this.shadowShape.radius;
+      this.shapes.splice(toIdx, 0, this.shadowShape);
+      this.shapes.slice(toIdx + 1, this.shapes.length).map((shape) => {
+        shape.x += this.shadowShape.radius * 2;
+        return shape;
+      });
+      this.dragIndex = toIdx;
+    }
+  }
+
+  removeShapeFromStoryline() {
+    if (this.dragIndex > -1) {
+      this.shadowShape = this.shapes.splice(this.dragIndex, 1)[0];
+      this.shapes.slice(this.dragIndex, this.shapes.length).map((shape) => {
+        shape.x -= this.shadowShape.radius * 2;
+        return shape;
+      });
+      this.dragIndex = -1;
+    }
+  }
+
   mouseUpListener() {
     this.canvas.addEventListener('mousedown', this.mouseDownListener, false);
     window.removeEventListener('mouseup', this.mouseUpListener, false);
     if (this.dragging) {
       this.dragging = false;
+      this.shadowShape.isShadow = false;
       window.removeEventListener('mousemove', this.mouseMoveListener, false);
     }
   }
@@ -133,7 +229,7 @@ export default class CanvasApp {
   mouseMoveListener(event) {
     let posX;
     let posY;
-    const shapeRad = this.shapes[this.numShapes - 1].radius;
+    const shapeRad = this.draggingShape.radius;
     const minX = shapeRad;
     const maxX = this.canvas.width - shapeRad;
     const minY = shapeRad;
@@ -152,12 +248,16 @@ export default class CanvasApp {
 
     this.targetX = posX;
     this.targetY = posY;
+    this.isStoryline = this.draggingShape.isInLane(this.canvas, 0);
   }
 
   drawShapes() {
     this.shapes.forEach((shape) => {
-      shape.drawToContext(this.context);
+      shape.drawToContext(this.context, this.dragging);
     });
+    if (this.dragging && this.draggingShape) {
+      this.draggingShape.drawToContext(this.context, this.dragging);
+    }
   }
 
   drawScreen() {
