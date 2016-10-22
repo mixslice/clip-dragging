@@ -6,7 +6,8 @@
   },
   "rules": {
     "no-mixed-operators": 0,
-    "no-param-reassign": 1
+    "no-param-reassign": 1,
+    "no-nested-ternary": 1
   },
   "settings": {
     "import/resolver": {
