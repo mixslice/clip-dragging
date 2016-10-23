@@ -2,14 +2,14 @@ import {
   Clip,
   COLLISION_LEFT,
   COLLISION_RIGHT,
-  // COLLISION_TOP,
-  // COLLISION_BOTTOM,
 } from './Clip';
 
 export default class CanvasApp {
   constructor(canvas) {
     this.canvas = canvas;
     this.context = canvas.getContext('2d');
+    this.laneHeightHalf = 20;
+    this.laneHeight = this.laneHeightHalf * 2;
     this.numClips = 10;
     this.easeAmount = 1;
     this.storylineClips = [];
@@ -181,18 +181,27 @@ export default class CanvasApp {
       // clip not in storyline
       const sign = Math.sign(this.getLane(this.draggingClip.y));
       this.shadowClip.y = this.canvas.height * 0.5
-        - sign * this.draggingClip.hRadius * 2;
+        - sign * this.laneHeight;
       this.shadowClip.x = this.draggingClip.x;
+
       this.laneClips.every((clip) => {
-        if (this.shadowClip === clip) return true;
-        const collisionType = clip.verticalCollisionTest(this.draggingClip);
-        clip.collisionType = collisionType;
-        if (collisionType) {
-          this.shadowClip.y -= sign * this.shadowClip.hRadius * 2;
-          return false;
+        if (this.shadowClip === clip) return false;
+        const isCollision = clip.horizontalCollisionTest(this.draggingClip);
+        const idx1 = this.shadowClip.bottomClips.indexOf(clip);
+        const idx2 = clip.bottomClips.indexOf(this.shadowClip);
+        if (isCollision && this.draggingClip.y < clip.y && idx1 < 0) {
+          this.shadowClip.bottomClips.push(clip);
+        } else if (isCollision && this.draggingClip.y > clip.y && idx2 < 0) {
+          clip.bottomClips.push(this.shadowClip);
+        } else if (((isCollision && this.draggingClip.y > clip.y) || !isCollision) && idx1 > -1) {
+          this.shadowClip.bottomClips.splice(idx1, 1);
+        } else if (((isCollision && this.draggingClip.y < clip.y) || !isCollision) && idx2 > -1) {
+          clip.bottomClips.splice(idx2, 1);
         }
+        clip.y = this.canvas.height * 0.5 - this.laneHeight - (clip.bottomClips.length ? sign * this.laneHeight : 0);
         return true;
       });
+      this.shadowClip.y -= this.shadowClip.bottomClips.length ? sign * this.laneHeight : 0;
     }
 
 
@@ -271,12 +280,11 @@ export default class CanvasApp {
   mouseMoveListener(event) {
     let posX;
     let posY;
-    const hRadius = this.draggingClip.hRadius;
     const wRadius = this.draggingClip.wRadius;
     const minX = wRadius;
     const maxX = this.canvas.width - wRadius;
-    const minY = hRadius;
-    const maxY = this.canvas.height - hRadius;
+    const minY = this.laneHeightHalf;
+    const maxY = this.canvas.height - this.laneHeightHalf;
 
     // getting mouse position correctly
     const bRect = this.canvas.getBoundingClientRect();

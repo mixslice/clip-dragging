@@ -1,8 +1,6 @@
 export const COLLISION_NONE = 0;
 export const COLLISION_RIGHT = 1;
 export const COLLISION_LEFT = 2;
-export const COLLISION_BOTTOM = 3;
-export const COLLISION_TOP = 4;
 
 export class Clip {
   constructor(posX, posY, wRadius = 60) {
@@ -14,6 +12,7 @@ export class Clip {
     this.isShadow = false;
     this.collisionType = COLLISION_NONE;
     this.isStoryClip = true;
+    this.bottomClips = [];
   }
 
   get radius() {
@@ -50,18 +49,12 @@ export class Clip {
     return COLLISION_NONE;
   }
 
+  horizontalCollisionTest(clip) {
+    return (Math.abs(this.x - clip.x) < this.wRadius + clip.wRadius);
+  }
+
   verticalCollisionTest(clip) {
-    if (
-      (Math.abs(this.x - clip.x) < this.wRadius + clip.wRadius)
-      && (clip.y < this.y + this.hRadius)
-      && (clip.y > this.y - this.hRadius)
-    ) {
-      if (clip.y > this.y) {
-        return COLLISION_BOTTOM;
-      }
-      return COLLISION_TOP;
-    }
-    return COLLISION_NONE;
+    return (Math.abs(this.y - clip.y) < this.hRadius + clip.hRadius);
   }
 
   isInLane(canvas, lane) {
@@ -88,14 +81,6 @@ export class Clip {
           ctx.fillRect(
             this.x, this.y - this.hRadius,
             this.wRadius, this.hRadius * 2);
-        } else if (this.collisionType === COLLISION_TOP) {
-          ctx.fillRect(
-            this.x - this.wRadius, this.y - this.hRadius,
-            this.wRadius * 2, this.hRadius);
-        } else if (this.collisionType === COLLISION_BOTTOM) {
-          ctx.fillRect(
-            this.x - this.wRadius, this.y,
-            this.wRadius * 2, this.hRadius);
         }
       }
     }
