@@ -2,13 +2,15 @@ import {
   Clip,
   COLLISION_LEFT,
   COLLISION_RIGHT,
+  // COLLISION_TOP,
+  // COLLISION_BOTTOM,
 } from './Clip';
 
 export default class CanvasApp {
   constructor(canvas) {
     this.canvas = canvas;
     this.context = canvas.getContext('2d');
-    this.numClips = 5;
+    this.numClips = 10;
     this.easeAmount = 1;
     this.storylineClips = [];
     this.laneClips = [];
@@ -95,8 +97,6 @@ export default class CanvasApp {
       });
     }
 
-
-
     if (this.dragging) {
       window.addEventListener('mousemove', this.mouseMoveListener.bind(this), false);
 
@@ -178,10 +178,21 @@ export default class CanvasApp {
         return true;
       });
     } else {
+      // clip not in storyline
       const sign = Math.sign(this.getLane(this.draggingClip.y));
       this.shadowClip.y = this.canvas.height * 0.5
         - sign * this.draggingClip.hRadius * 2;
       this.shadowClip.x = this.draggingClip.x;
+      this.laneClips.every((clip) => {
+        if (this.shadowClip === clip) return true;
+        const collisionType = clip.verticalCollisionTest(this.draggingClip);
+        clip.collisionType = collisionType;
+        if (collisionType) {
+          this.shadowClip.y -= sign * this.shadowClip.hRadius * 2;
+          return false;
+        }
+        return true;
+      });
     }
 
 

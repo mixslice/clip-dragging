@@ -52,7 +52,8 @@ export class Clip {
 
   verticalCollisionTest(clip) {
     if (
-      (clip.y < this.y + this.hRadius)
+      (Math.abs(this.x - clip.x) < this.wRadius + clip.wRadius)
+      && (clip.y < this.y + this.hRadius)
       && (clip.y > this.y - this.hRadius)
     ) {
       if (clip.y > this.y) {
@@ -78,15 +79,23 @@ export class Clip {
         this.x - this.wRadius, this.y - this.hRadius,
         2 * this.wRadius, 2 * this.hRadius);
 
-      if (__DEV__) {
-        if (dragging && this.collisionType === COLLISION_LEFT) {
+      if (__DEV__ && dragging) {
+        if (this.collisionType === COLLISION_LEFT) {
           ctx.fillRect(
             this.x - this.wRadius, this.y - this.hRadius,
             this.wRadius, this.hRadius * 2);
-        } else if (dragging && this.collisionType === COLLISION_RIGHT) {
+        } else if (this.collisionType === COLLISION_RIGHT) {
           ctx.fillRect(
             this.x, this.y - this.hRadius,
             this.wRadius, this.hRadius * 2);
+        } else if (this.collisionType === COLLISION_TOP) {
+          ctx.fillRect(
+            this.x - this.wRadius, this.y - this.hRadius,
+            this.wRadius * 2, this.hRadius);
+        } else if (this.collisionType === COLLISION_BOTTOM) {
+          ctx.fillRect(
+            this.x - this.wRadius, this.y,
+            this.wRadius * 2, this.hRadius);
         }
       }
     }
