@@ -179,29 +179,30 @@ export default class CanvasApp {
       });
     } else {
       // clip not in storyline
-      const sign = Math.sign(this.getLane(this.draggingClip.y));
+      const lane = this.getLane(this.draggingClip.y);
+      const sign = Math.sign(lane);
       this.shadowClip.y = this.canvas.height * 0.5
-        - sign * this.laneHeight;
+        - lane * this.laneHeight;
       this.shadowClip.x = this.draggingClip.x;
 
-      this.laneClips.every((clip) => {
-        if (this.shadowClip === clip) return false;
-        const isCollision = clip.horizontalCollisionTest(this.draggingClip);
-        const idx1 = this.shadowClip.bottomClips.indexOf(clip);
-        const idx2 = clip.bottomClips.indexOf(this.shadowClip);
-        if (isCollision && this.draggingClip.y < clip.y && idx1 < 0) {
-          this.shadowClip.bottomClips.push(clip);
-        } else if (isCollision && this.draggingClip.y > clip.y && idx2 < 0) {
-          clip.bottomClips.push(this.shadowClip);
-        } else if (((isCollision && this.draggingClip.y > clip.y) || !isCollision) && idx1 > -1) {
-          this.shadowClip.bottomClips.splice(idx1, 1);
-        } else if (((isCollision && this.draggingClip.y < clip.y) || !isCollision) && idx2 > -1) {
-          clip.bottomClips.splice(idx2, 1);
-        }
-        clip.y = this.canvas.height * 0.5 - this.laneHeight - (clip.bottomClips.length ? sign * this.laneHeight : 0);
-        return true;
-      });
-      this.shadowClip.y -= this.shadowClip.bottomClips.length ? sign * this.laneHeight : 0;
+      // this.laneClips.every((clip) => {
+      //   if (this.shadowClip === clip) return false;
+      //   const isCollision = clip.horizontalCollisionTest(this.draggingClip);
+      //   const idx1 = this.shadowClip.bottomClips.indexOf(clip);
+      //   const idx2 = clip.bottomClips.indexOf(this.shadowClip);
+      //   if (isCollision && this.draggingClip.y < clip.y && idx1 < 0) {
+      //     this.shadowClip.bottomClips.push(clip);
+      //   } else if (isCollision && this.draggingClip.y > clip.y && idx2 < 0) {
+      //     clip.bottomClips.push(this.shadowClip);
+      //   } else if (((isCollision && this.draggingClip.y > clip.y) || !isCollision) && idx1 > -1) {
+      //     this.shadowClip.bottomClips.splice(idx1, 1);
+      //   } else if (((isCollision && this.draggingClip.y < clip.y) || !isCollision) && idx2 > -1) {
+      //     clip.bottomClips.splice(idx2, 1);
+      //   }
+      //   clip.y = this.canvas.height * 0.5 - this.laneHeight - (clip.bottomClips.length ? sign * this.laneHeight : 0);
+      //   return true;
+      // });
+      // this.shadowClip.y -= this.shadowClip.bottomClips.length ? sign * this.laneHeight : 0;
     }
 
 
