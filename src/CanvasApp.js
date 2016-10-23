@@ -1,21 +1,21 @@
 import {
-  RectParticle,
+  Clip,
   COLLISION_LEFT,
   COLLISION_RIGHT,
-} from './RectParticle';
+} from './Clip';
 
 export default class CanvasApp {
   constructor(canvas) {
     this.canvas = canvas;
     this.context = canvas.getContext('2d');
-    this.numShapes = 5;
+    this.numClips = 5;
     this.easeAmount = 1;
-    this.shapes = [];
-    this.laneShapes = [];
+    this.storylineClips = [];
+    this.laneClips = [];
     this.dragIndex = -1;
     this.dragging = false;
-    this.draggingShape = null;
-    this.shadowShape = null;
+    this.draggingClip = null;
+    this.shadowClip = null;
     this.dragHoldX = null;
     this.dragHoldY = null;
     this.timer = null;
@@ -29,15 +29,15 @@ export default class CanvasApp {
   }
 
   draw() {
-    this.shapes = [];
-    this.makeShapes();
+    this.storylineClips = [];
+    this.makeClips();
     this.drawScreen();
     this.canvas.addEventListener('mousedown', this.mouseDownListener.bind(this), false);
   }
 
-  makeShapes() {
+  makeClips() {
     let tempX = 0;
-    this.shapes = [...Array(this.numShapes || 0)].map(() => {
+    this.storylineClips = [...Array(this.numClips || 0)].map(() => {
       const tempY = this.canvas.height * 0.5;
       const tempRad = 10 + Math.floor(Math.random() * 70);
       tempX += tempRad;
@@ -51,12 +51,12 @@ export default class CanvasApp {
       const tempColor = `rgba(${tempR},${tempG},${tempB},${tempA})`;
 
       // randomly select either a circle or a square
-      const tempShape = new RectParticle(tempX, tempY);
+      const tempClip = new Clip(tempX, tempY);
 
-      tempShape.color = tempColor;
-      tempShape.radius = tempRad;
+      tempClip.color = tempColor;
+      tempClip.radius = tempRad;
       tempX += tempRad;
-      return tempShape;
+      return tempClip;
     });
   }
 
@@ -68,26 +68,26 @@ export default class CanvasApp {
     const lane = this.getLane(mouseY);
 
     if (lane === 0) {
-      this.shapes.every((shape, i) => {
-        if (shape.hitTest(mouseX, mouseY)) {
+      this.storylineClips.every((clip, i) => {
+        if (clip.hitTest(mouseX, mouseY)) {
           this.dragging = true;
           this.isStoryline = true;
           // the following variable will be reset if this loop repeats with another successful hit:
-          this.shadowShape = shape;
-          this.shadowShape.isShadow = true;
+          this.shadowClip = clip;
+          this.shadowClip.isShadow = true;
           this.dragIndex = i;
           return false;
         }
         return true;
       });
     } else {
-      this.laneShapes.every((shape) => {
-        if (shape.hitTest(mouseX, mouseY)) {
+      this.laneClips.every((clip) => {
+        if (clip.hitTest(mouseX, mouseY)) {
           this.dragging = true;
           this.isStoryline = false;
           // the following variable will be reset if this loop repeats with another successful hit:
-          this.shadowShape = shape;
-          this.shadowShape.isShadow = true;
+          this.shadowClip = clip;
+          this.shadowClip.isShadow = true;
           this.dragIndex = -1;
           return false;
         }
@@ -100,16 +100,16 @@ export default class CanvasApp {
     if (this.dragging) {
       window.addEventListener('mousemove', this.mouseMoveListener.bind(this), false);
 
-      // place currently dragged shape on top
-      // this.shadowShape = this.shapes.splice(this.dragIndex, 1)[0];
-      // this.shapes.push(this.draggingShape);
-      // insert shadowShape
-      this.draggingShape = new RectParticle(this.shadowShape.x, this.shadowShape.y);
-      this.draggingShape.copyProperties(this.shadowShape);
+      // place currently dragged clip on top
+      // this.shadowClip = this.storylineClips.splice(this.dragIndex, 1)[0];
+      // this.storylineClips.push(this.draggingClip);
+      // insert shadowClip
+      this.draggingClip = new Clip(this.shadowClip.x, this.shadowClip.y);
+      this.draggingClip.copyProperties(this.shadowClip);
 
-      // shapeto drag is now last one in array
-      this.dragHoldX = mouseX - this.draggingShape.x;
-      this.dragHoldY = mouseY - this.draggingShape.y;
+      // clipto drag is now last one in array
+      this.dragHoldX = mouseX - this.draggingClip.x;
+      this.dragHoldY = mouseY - this.draggingClip.y;
 
       // The "target" position is where the object should be if it were to
       // move there instantaneously. But we will set up the code so that
@@ -130,26 +130,26 @@ export default class CanvasApp {
   }
 
   onTimerTick() {
-    // because of reordering, the dragging shape is the last one in the array.
-    this.draggingShape.x += this.easeAmount * (this.targetX - this.draggingShape.x);
-    this.draggingShape.y += this.easeAmount * (this.targetY - this.draggingShape.y);
+    // because of reordering, the dragging clip is the last one in the array.
+    this.draggingClip.x += this.easeAmount * (this.targetX - this.draggingClip.x);
+    this.draggingClip.y += this.easeAmount * (this.targetY - this.draggingClip.y);
 
-    if (!this.isStoryline && this.isStoryline !== this.draggingShape.isStoryClip) {
+    if (!this.isStoryline && this.isStoryline !== this.draggingClip.isStoryClip) {
       // remove clip
-      this.draggingShape.isStoryClip = false;
-      this.removeShapeFromStoryline();
-    } else if (this.isStoryline && this.isStoryline !== this.draggingShape.isStoryClip) {
+      this.draggingClip.isStoryClip = false;
+      this.removeClipFromStoryline();
+    } else if (this.isStoryline && this.isStoryline !== this.draggingClip.isStoryClip) {
       // insert clip
-      this.draggingShape.isStoryClip = true;
+      this.draggingClip.isStoryClip = true;
       let shouldAppendLast = true;
-      this.shapes.every((shape, idx) => {
-        const collisionType = shape.collisionTest(this.draggingShape);
-        shape.collisionType = collisionType;
+      this.storylineClips.every((clip, idx) => {
+        const collisionType = clip.collisionTest(this.draggingClip);
+        clip.collisionType = collisionType;
         if (collisionType) {
           if (collisionType === COLLISION_LEFT) {
-            this.insertShapeToStoryline(shape.x - shape.radius, idx);
+            this.insertClipToStoryline(clip.x - clip.radius, idx);
           } else if (collisionType === COLLISION_RIGHT) {
-            this.insertShapeToStoryline(shape.x + shape.radius, idx + 1);
+            this.insertClipToStoryline(clip.x + clip.radius, idx + 1);
           }
           shouldAppendLast = false;
           return false;
@@ -158,41 +158,41 @@ export default class CanvasApp {
       });
 
       if (shouldAppendLast) {
-        const lastShape = this.shapes[this.shapes.length - 1];
-        this.insertShapeToStoryline(lastShape.x + lastShape.radius, this.shapes.length);
+        const lastClip = this.storylineClips[this.storylineClips.length - 1];
+        this.insertClipToStoryline(lastClip.x + lastClip.radius, this.storylineClips.length);
       }
     } else if (this.isStoryline) {
-      this.shapes.every((shape, idx) => {
-        // skip shadow shape
+      this.storylineClips.every((clip, idx) => {
+        // skip shadow clip
         if (this.dragIndex === idx) return true;
-        const collisionType = shape.collisionTest(this.draggingShape);
-        shape.collisionType = collisionType;
+        const collisionType = clip.collisionTest(this.draggingClip);
+        clip.collisionType = collisionType;
         if (collisionType) {
           if (collisionType === COLLISION_LEFT && this.dragIndex !== idx - 1) {
-            this.moveShapeInStoryline(shape.x - shape.radius, idx);
+            this.moveClipInStoryline(clip.x - clip.radius, idx);
           } else if (collisionType === COLLISION_RIGHT && this.dragIndex !== idx + 1) {
-            this.moveShapeInStoryline(shape.x + shape.radius, idx + 1);
+            this.moveClipInStoryline(clip.x + clip.radius, idx + 1);
           }
           return false;
         }
         return true;
       });
     } else {
-      const sign = Math.sign(this.getLane(this.draggingShape.y));
-      this.shadowShape.y = this.canvas.height * 0.5
-        - sign * this.draggingShape.hRadius * 2;
-      this.shadowShape.x = this.draggingShape.x;
+      const sign = Math.sign(this.getLane(this.draggingClip.y));
+      this.shadowClip.y = this.canvas.height * 0.5
+        - sign * this.draggingClip.hRadius * 2;
+      this.shadowClip.x = this.draggingClip.x;
     }
 
 
     // stop the timer when the target position is reached (close enough)
     if (
       (!this.dragging)
-      && (Math.abs(this.draggingShape.x - this.targetX) < 0.1)
-      && (Math.abs(this.draggingShape.y - this.targetY) < 0.1)
+      && (Math.abs(this.draggingClip.x - this.targetX) < 0.1)
+      && (Math.abs(this.draggingClip.y - this.targetY) < 0.1)
     ) {
-      this.draggingShape.x = this.targetX;
-      this.draggingShape.y = this.canvas.height * 0.5
+      this.draggingClip.x = this.targetX;
+      this.draggingClip.y = this.canvas.height * 0.5
       - Math.floor((this.canvas.height * 0.5 - this.targetY + 20) / 40) * 40;
       // stop timer:
       clearInterval(this.timer);
@@ -200,48 +200,48 @@ export default class CanvasApp {
     this.drawScreen();
   }
 
-  moveShapeInStoryline(posX, toIdx) {
+  moveClipInStoryline(posX, toIdx) {
     if (toIdx < this.dragIndex) {
-      this.shadowShape.x = posX + this.shadowShape.radius;
-      this.shadowShape = this.shapes.splice(this.dragIndex, 1)[0];
-      this.shapes.splice(toIdx, 0, this.shadowShape);
+      this.shadowClip.x = posX + this.shadowClip.radius;
+      this.shadowClip = this.storylineClips.splice(this.dragIndex, 1)[0];
+      this.storylineClips.splice(toIdx, 0, this.shadowClip);
       for (let i = toIdx + 1; i <= this.dragIndex; i += 1) {
-        this.shapes[i].x += this.shadowShape.radius * 2;
+        this.storylineClips[i].x += this.shadowClip.radius * 2;
       }
       this.dragIndex = toIdx;
     } else {
-      this.shadowShape.x = posX - this.shadowShape.radius;
-      this.shapes.splice(toIdx, 0, this.shadowShape);
-      this.shadowShape = this.shapes.splice(this.dragIndex, 1)[0];
+      this.shadowClip.x = posX - this.shadowClip.radius;
+      this.storylineClips.splice(toIdx, 0, this.shadowClip);
+      this.shadowClip = this.storylineClips.splice(this.dragIndex, 1)[0];
       for (let i = this.dragIndex; i < toIdx - 1; i += 1) {
-        this.shapes[i].x -= this.shadowShape.radius * 2;
+        this.storylineClips[i].x -= this.shadowClip.radius * 2;
       }
       this.dragIndex = toIdx - 1;
     }
   }
 
-  insertShapeToStoryline(posX, toIdx) {
+  insertClipToStoryline(posX, toIdx) {
     if (this.dragIndex < 0) {
-      this.shadowShape.x = posX + this.shadowShape.radius;
-      this.shadowShape.y = this.canvas.height * 0.5;
-      const idx = this.laneShapes.indexOf(this.shadowShape);
-      this.laneShapes.splice(idx, 1);
-      this.shapes.splice(toIdx, 0, this.shadowShape);
-      this.shapes.slice(toIdx + 1, this.shapes.length).map((shape) => {
-        shape.x += this.shadowShape.radius * 2;
-        return shape;
+      this.shadowClip.x = posX + this.shadowClip.radius;
+      this.shadowClip.y = this.canvas.height * 0.5;
+      const idx = this.laneClips.indexOf(this.shadowClip);
+      this.laneClips.splice(idx, 1);
+      this.storylineClips.splice(toIdx, 0, this.shadowClip);
+      this.storylineClips.slice(toIdx + 1, this.storylineClips.length).map((clip) => {
+        clip.x += this.shadowClip.radius * 2;
+        return clip;
       });
       this.dragIndex = toIdx;
     }
   }
 
-  removeShapeFromStoryline() {
+  removeClipFromStoryline() {
     if (this.dragIndex > -1) {
-      this.shadowShape = this.shapes.splice(this.dragIndex, 1)[0];
-      this.laneShapes.push(this.shadowShape);
-      this.shapes.slice(this.dragIndex, this.shapes.length).map((shape) => {
-        shape.x -= this.shadowShape.radius * 2;
-        return shape;
+      this.shadowClip = this.storylineClips.splice(this.dragIndex, 1)[0];
+      this.laneClips.push(this.shadowClip);
+      this.storylineClips.slice(this.dragIndex, this.storylineClips.length).map((clip) => {
+        clip.x -= this.shadowClip.radius * 2;
+        return clip;
       });
       this.dragIndex = -1;
     }
@@ -252,7 +252,7 @@ export default class CanvasApp {
     window.removeEventListener('mouseup', this.mouseUpListener, false);
     if (this.dragging) {
       this.dragging = false;
-      this.shadowShape.isShadow = false;
+      this.shadowClip.isShadow = false;
       window.removeEventListener('mousemove', this.mouseMoveListener, false);
     }
   }
@@ -260,8 +260,8 @@ export default class CanvasApp {
   mouseMoveListener(event) {
     let posX;
     let posY;
-    const hRadius = this.draggingShape.hRadius;
-    const wRadius = this.draggingShape.wRadius;
+    const hRadius = this.draggingClip.hRadius;
+    const wRadius = this.draggingClip.wRadius;
     const minX = wRadius;
     const maxX = this.canvas.width - wRadius;
     const minY = hRadius;
@@ -280,15 +280,15 @@ export default class CanvasApp {
 
     this.targetX = posX;
     this.targetY = posY;
-    this.isStoryline = this.draggingShape.isInLane(this.canvas, 0);
+    this.isStoryline = this.draggingClip.isInLane(this.canvas, 0);
   }
 
-  drawShapes() {
-    [...this.shapes, ...this.laneShapes].forEach((shape) => {
-      shape.drawToContext(this.context, this.dragging);
+  drawClips() {
+    [...this.storylineClips, ...this.laneClips].forEach((clip) => {
+      clip.drawToContext(this.context, this.dragging);
     });
-    if (this.dragging && this.draggingShape) {
-      this.draggingShape.drawToContext(this.context, this.dragging);
+    if (this.dragging && this.draggingClip) {
+      this.draggingClip.drawToContext(this.context, this.dragging);
     }
   }
 
@@ -297,6 +297,6 @@ export default class CanvasApp {
     this.context.fillStyle = '#333';
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    this.drawShapes();
+    this.drawClips();
   }
 }

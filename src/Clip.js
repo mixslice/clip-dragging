@@ -4,7 +4,7 @@ export const COLLISION_LEFT = 2;
 export const COLLISION_BOTTOM = 3;
 export const COLLISION_TOP = 4;
 
-export class RectParticle {
+export class Clip {
   constructor(posX, posY, wRadius = 60) {
     this.x = posX;
     this.y = posY;
@@ -37,12 +37,12 @@ export class RectParticle {
       && (hitY < this.y + this.hRadius));
   }
 
-  collisionTest(shape) {
+  collisionTest(clip) {
     if (
-      (shape.x < this.x + this.wRadius)
-      && (shape.x > this.x - this.wRadius)
+      (clip.x < this.x + this.wRadius)
+      && (clip.x > this.x - this.wRadius)
     ) {
-      if (shape.x > this.x) {
+      if (clip.x > this.x) {
         return COLLISION_RIGHT;
       }
       return COLLISION_LEFT;
@@ -50,12 +50,12 @@ export class RectParticle {
     return COLLISION_NONE;
   }
 
-  verticalCollisionTest(shape) {
+  verticalCollisionTest(clip) {
     if (
-      (shape.y < this.y + this.hRadius)
-      && (shape.y > this.y - this.hRadius)
+      (clip.y < this.y + this.hRadius)
+      && (clip.y > this.y - this.hRadius)
     ) {
-      if (shape.y > this.y) {
+      if (clip.y > this.y) {
         return COLLISION_BOTTOM;
       }
       return COLLISION_TOP;
